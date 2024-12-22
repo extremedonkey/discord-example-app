@@ -16,11 +16,16 @@
   "author": "Shay DeWael",
   "license": "MIT",
   "dependencies": {
+    "@discordjs/builders": "^1.9.0",
     "discord-interactions": "^4.0.0",
-    "dotenv": "^16.0.3",
-    "express": "^4.18.2"
+    "discord.js": "^14.16.3",
+    "dotenv": "^16.4.7",
+    "express": "^4.18.2",
+    "node-fetch": "^3.3.2"
   },
   "devDependencies": {
-    "nodemon": "^3.0.0"
+    "@types/node": "^22.10.2",
+    "nodemon": "^3.0.0",
+    "typescript": "^5.7.2"
   }
 }

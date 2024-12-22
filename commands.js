@@ -19,16 +19,42 @@ function createCommandChoices() {
 
 // Simple test command
 const TEST_COMMAND = {
-  name: 'test',
-  description: 'Basic command',
+  name: 'playericons',
+  description: 'Create player icons from avatars',
+  options: [
+    {
+      type: 3, // STRING type
+      name: 'userid1',
+      description: 'First Discord User ID',
+      required: true,
+    },
+    {
+      type: 3, // STRING type
+      name: 'userid2',
+      description: 'Second Discord User ID (optional)',
+      required: false,
+    }
+  ],
   type: 1,
-  integration_types: [0, 1],
-  contexts: [0, 1, 2],
+};
+
+// Simple getAllGuildRoles command
+const GET_ALL_GUILD_ROLES_COMMAND = {
+  name: 'zzgetallguildroles',  // changed from 'getallguildroles'
+  description: 'Get all role IDs in the guild',
+  type: 1,
+};
+
+// Simple getroles command
+const ROLES_COMMAND = {
+  name: 'zzgetroles',  // changed from 'getroles'
+  description: 'Reece seeing if he can do stuff',
+  type: 1,
 };
 
 // Command containing options
 const CHALLENGE_COMMAND = {
-  name: 'challenge',
+  name: 'zzchallenge',  // changed from 'challenge'
   description: 'Challenge to a match of rock paper scissors',
   options: [
     {
@@ -40,10 +66,48 @@ const CHALLENGE_COMMAND = {
     },
   ],
   type: 1,
-  integration_types: [0, 1],
-  contexts: [0, 2],
 };
 
-const ALL_COMMANDS = [TEST_COMMAND, CHALLENGE_COMMAND];
+const SET_AGE_COMMAND = {
+  name: 'setage',
+  description: 'Set the age for a specific user',
+  options: [
+    {
+      type: 3, // STRING type
+      name: 'userid',
+      description: 'Discord User ID to update',
+      required: true,
+    },
+    {
+      type: 4, // INTEGER type
+      name: 'age',
+      description: 'Age to set for the user',
+      required: true,
+    },
+  ],
+  type: 1,
+};
+
+const CASTLIST_COMMAND = {
+  name: 'castlist',
+  description: 'Display the dynamic castlist',
+  type: 1,
+};
+
+const CHECKDATA_COMMAND = {
+  name: 'checkdata',
+  description: 'Check stored player data',
+  type: 1,
+};
+
+const ALL_COMMANDS = [
+  TEST_COMMAND,
+  GET_ALL_GUILD_ROLES_COMMAND,
+  CHALLENGE_COMMAND,
+  ROLES_COMMAND,
+  SET_AGE_COMMAND,
+  CASTLIST_COMMAND,
+  CHECKDATA_COMMAND,
+];
 
 InstallGlobalCommands(process.env.APP_ID, ALL_COMMANDS);

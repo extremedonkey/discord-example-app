@@ -1,27 +1,22 @@
 import 'dotenv/config';
+import fetch from 'node-fetch';
 
 export async function DiscordRequest(endpoint, options) {
-  // append endpoint to root API URL
-  const url = 'https://discord.com/api/v10/' + endpoint;
-  // Stringify payloads
+  const url = `https://discord.com/api/v10/${endpoint}`;
   if (options.body) options.body = JSON.stringify(options.body);
-  // Use fetch to make requests
   const res = await fetch(url, {
     headers: {
       Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
       'Content-Type': 'application/json; charset=UTF-8',
-      'User-Agent': 'DiscordBot (https://github.com/discord/discord-example-app, 1.0.0)',
     },
-    ...options
+    ...options,
   });
-  // throw API errors
   if (!res.ok) {
     const data = await res.json();
     console.log(res.status);
     throw new Error(JSON.stringify(data));
   }
-  // return original response
-  return res;
+  return res.json();
 }
 
 export async function InstallGlobalCommands(appId, commands) {
@@ -30,9 +25,10 @@ export async function InstallGlobalCommands(appId, commands) {
 
   try {
     // This is calling the bulk overwrite endpoint: https://discord.com/developers/docs/interactions/application-commands#bulk-overwrite-global-application-commands
-    await DiscordRequest(endpoint, { method: 'PUT', body: commands });
+    const res = await DiscordRequest(endpoint, { method: 'PUT', body: commands });
+    console.log('Commands registered:', res);
   } catch (err) {
-    console.error(err);
+    console.error('Error registering commands:', err);
   }
 }
 
