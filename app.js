@@ -89,7 +89,7 @@ async function hasRequiredPermissions(guildId, userId) {
  */
 app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async function (req, res) {
   // Interaction type and data
-  const { type, id, data } = req.body;
+  const { type, id, data, guild_id } = req.body;
 
   /**
    * Handle verification requests
@@ -650,56 +650,70 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       }
     } else if (name === 'settribe2') {
       try {
-        // 1. Defer response to avoid immediate timeout
+        console.log('Received /cleartribe2 command');
         await res.send({
           type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE
         });
 
         const tribeRoleId = data.options[0].value;
-        const rawData = fs.readFileSync('./tribes.json');
-        const tribesCfg = JSON.parse(rawData);
-        tribesCfg.tribe2 = tribeRoleId;
-        const emojiOption = data.options.find(o => o.name === 'emoji');
-        tribesCfg.tribe2emoji = emojiOption?.value || null;
-        fs.writeFileSync('./tribes.json', JSON.stringify(tribesCfg, null, 2));
-
+        console.log(`Tribe Role ID: ${tribeRoleId}`);
         const guildId = req.body.guild_id;
         const guild = await client.guilds.fetch(guildId);
+        console.log(`Fetched guild: ${guild.name}`);
         const members = await guild.members.fetch();
         const targetMembers = members.filter(m => m.roles.cache.has(tribeRoleId));
+        console.log(`Found ${targetMembers.size} members with tribe role`);
 
+        const playerData = await loadPlayerData(guildId);
         let resultLines = [];
 
         for (const [_, member] of targetMembers) {
-          try {
-            const avatarUrl = member.avatarURL({ size:128 }) || member.user.avatarURL({ size:128 });
-            if (!avatarUrl) continue;
-            const emoji = await guild.emojis.create({ attachment: avatarUrl, name: member.id });
-            await updatePlayer(member.id, { emojiCode: `<:${emoji.name}:${emoji.id}>` });
-            resultLines.push(`${member.displayName}: <:${emoji.name}:${emoji.id}>`);
-          } catch (err) {
-            console.error('Error creating emoji for', member.displayName, err);
+          if (playerData[member.id] && playerData[member.id].emojiCode) {
+            const match = playerData[member.id].emojiCode.match(/<:\w+:(\d+)>/);
+            if (match && match[1]) {
+              try {
+                await guild.emojis.delete(match[1]);
+                console.log(`Deleted emoji for ${member.displayName}`);
+                resultLines.push(`Deleted emoji for ${member.displayName}`);
+              } catch (err) {
+                console.error(`Error deleting emoji for ${member.displayName}:`, err);
+                resultLines.push(`Failed to delete emoji for ${member.displayName}`);
+              }
+            }
+            playerData[member.id].emojiCode = null;
           }
         }
 
-        // 2. Patch deferred response with the final message
+        fs.writeFileSync('./playerData.json', JSON.stringify(playerData, null, 2));
+        console.log('Updated playerData.json');
+
+        const rawData = fs.readFileSync('./tribes.json');
+        const tribesCfg = JSON.parse(rawData);
+
+        if (tribesCfg.guilds && tribesCfg.guilds[guildId]) {
+          tribesCfg.guilds[guildId].tribe2 = null;
+          tribesCfg.guilds[guildId].tribe2emoji = null;
+          console.log('Updated tribes.json');
+        }
+
+        fs.writeFileSync('./tribes.json', JSON.stringify(tribesCfg, null, 2));
+
         const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
         await DiscordRequest(endpoint, {
           method: 'PATCH',
           body: {
-            content: `Tribe2 role updated to ${tribeRoleId}\n\nCreated emojis:\n${resultLines.join('\n')}`,
+            content: `Tribe2 role cleared and emojis deleted:\n${resultLines.join('\n')}`,
             flags: InteractionResponseFlags.EPHEMERAL
           },
         });
 
-        // Add a return here
         return;
       } catch (error) {
-        console.error('Error setting tribe2:', error);
+        console.error('Error clearing tribe2:', error);
         return res.send({
           type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
           data: {
-            content: 'Error updating tribe2 role',
+            content: 'Error clearing tribe2 role',
             flags: InteractionResponseFlags.EPHEMERAL
           },
         });
@@ -749,56 +763,80 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       }
     } else if (name === 'cleartribe1' || name === 'cleartribe2' || name === 'cleartribe3' || name === 'cleartribe4') {
       try {
-        await res.send({ type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE });
-        const tribeRoleId = data.options[0].value;
-        const tribeKey = name.replace('clear', ''); // e.g. 'tribe1'
-        const rawData = fs.readFileSync('./tribes.json');
-        const tribesCfg = JSON.parse(rawData);
-        tribesCfg[tribeKey] = null;
-        tribesCfg[tribeKey + 'emoji'] = null;
-        fs.writeFileSync('./tribes.json', JSON.stringify(tribesCfg, null, 2));
-    
+        console.log(`Received /${name} command`);
+        await res.send({
+          type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE
+        });
+
         const guildId = req.body.guild_id;
         const guild = await client.guilds.fetch(guildId);
+        console.log(`Fetched guild: ${guild.name}`);
+
+        const rawData = fs.readFileSync('./tribes.json');
+        const tribesCfg = JSON.parse(rawData);
+        const tribeKey = name.replace('clear', ''); // e.g. 'tribe1'
+        const tribeRoleId = tribesCfg[tribeKey];
+
+        if (!tribeRoleId) {
+          console.log(`No role ID found for ${tribeKey}`);
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              content: `No role ID found for ${tribeKey}`,
+              flags: InteractionResponseFlags.EPHEMERAL
+            },
+          });
+        }
+
+        console.log(`Tribe Role ID: ${tribeRoleId}`);
         const members = await guild.members.fetch();
-        const targetMembers = members.filter(member => member.roles.cache.has(tribeRoleId));
-    
-        const playerData = await loadPlayerData();
+        const targetMembers = members.filter(m => m.roles.cache.has(tribeRoleId));
+        console.log(`Found ${targetMembers.size} members with tribe role`);
+
+        const playerData = await loadPlayerData(guildId);
         let resultLines = [];
-    
+
         for (const [_, member] of targetMembers) {
-          if (playerData[member.id]) {
-            const emojiCode = playerData[member.id].emojiCode;
-            if (emojiCode) {
-              const match = emojiCode.match(/<:\w+:(\d+)>/);
-              if (match && match[1]) {
-                try {
-                  await guild.emojis.delete(match[1]);
-                  resultLines.push(`Deleted emoji for ${member.displayName}`);
-                } catch {}
+          if (playerData[member.id] && playerData[member.id].emojiCode) {
+            const match = playerData[member.id].emojiCode.match(/<:\w+:(\d+)>/);
+            if (match && match[1]) {
+              try {
+                await guild.emojis.delete(match[1]);
+                console.log(`Deleted emoji for ${member.displayName}`);
+                resultLines.push(`Deleted emoji for ${member.displayName}`);
+              } catch (err) {
+                console.error(`Error deleting emoji for ${member.displayName}:`, err);
+                resultLines.push(`Failed to delete emoji for ${member.displayName}`);
               }
             }
-            delete playerData[member.id];
-            resultLines.push(`Removed player entry for ${member.displayName}`);
+            playerData[member.id].emojiCode = null;
           }
         }
-    
+
         fs.writeFileSync('./playerData.json', JSON.stringify(playerData, null, 2));
+        console.log('Updated playerData.json');
+
+        tribesCfg[tribeKey] = null;
+        tribesCfg[`${tribeKey}emoji`] = null;
+        fs.writeFileSync('./tribes.json', JSON.stringify(tribesCfg, null, 2));
+        console.log('Updated tribes.json');
+
         const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
         await DiscordRequest(endpoint, {
           method: 'PATCH',
           body: {
-            content: `Cleared ${tribeKey}, set to null\n${resultLines.join('\n')}`,
+            content: `${name} role cleared and emojis deleted:\n${resultLines.join('\n')}`,
             flags: InteractionResponseFlags.EPHEMERAL
           },
         });
+
         return;
-      } catch (err) {
-        console.error('Error clearing tribe:', err);
+      } catch (error) {
+        console.error(`Error clearing ${name}:`, error);
         return res.send({
           type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
           data: {
-            content: `Error clearing tribe`,
+            content: `Error clearing ${name} role`,
             flags: InteractionResponseFlags.EPHEMERAL
           },
         });

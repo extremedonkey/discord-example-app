@@ -219,14 +219,6 @@ const CLEAR_TRIBE1_COMMAND = {
   name: maybePrependDev('cleartribe1'),
   description: 'Clear tribe1, remove associated players and emojis',
   type: 1,
-  options: [
-    {
-      name: 'role',
-      description: 'Role ID representing tribe1',
-      type: 8,
-      required: true
-    }
-  ],
   default_member_permissions: ADMIN_PERMISSIONS
 };
 
@@ -234,14 +226,6 @@ const CLEAR_TRIBE2_COMMAND = {
   name: maybePrependDev('cleartribe2'),
   description: 'Clear tribe2, remove associated players and emojis',
   type: 1,
-  options: [
-    {
-      name: 'role',
-      description: 'Role ID representing tribe2',
-      type: 8,
-      required: true
-    }
-  ],
   default_member_permissions: ADMIN_PERMISSIONS
 };
 
@@ -249,14 +233,6 @@ const CLEAR_TRIBE3_COMMAND = {
   name: maybePrependDev('cleartribe3'),
   description: 'Clear tribe3, remove associated players and emojis',
   type: 1,
-  options: [
-    {
-      name: 'role',
-      description: 'Role ID representing tribe3',
-      type: 8,
-      required: true
-    }
-  ],
   default_member_permissions: ADMIN_PERMISSIONS
 };
 
@@ -264,14 +240,6 @@ const CLEAR_TRIBE4_COMMAND = {
   name: maybePrependDev('cleartribe4'),
   description: 'Clear tribe4, remove associated players and emojis',
   type: 1,
-  options: [
-    {
-      name: 'role',
-      description: 'Role ID representing tribe4',
-      type: 8,
-      required: true
-    }
-  ],
   default_member_permissions: ADMIN_PERMISSIONS
 };
 
