@@ -8,7 +8,7 @@ import {
   ButtonStyleTypes,
   verifyKeyMiddleware,
 } from 'discord-interactions';
-import { Client, GatewayIntentBits, EmbedBuilder, SnowflakeUtil } from 'discord.js';
+import { Client, GatewayIntentBits, EmbedBuilder, SnowflakeUtil, PermissionFlagsBits } from 'discord.js';
 import { getRandomEmoji, DiscordRequest, capitalize } from './utils.js';
 import { getShuffledOptions, getResult } from './game.js';
 import { 
@@ -19,6 +19,7 @@ import {
   loadTribeIds,
   savePlayerData 
 } from './storage.js';
+import fs from 'fs';
 
 // Create an express app
 const app = express();
@@ -67,6 +68,21 @@ const roleConfig = {
   pronounRoleIDs
 };
 
+// Add this near the top with other constants
+const REQUIRED_PERMISSIONS = [
+  PermissionFlagsBits.Administrator,
+  PermissionFlagsBits.ManageChannels,
+  PermissionFlagsBits.ManageGuild,
+  PermissionFlagsBits.ManageRoles,
+];
+
+// Add this helper function
+async function hasRequiredPermissions(guildId, userId) {
+  const guild = await client.guilds.fetch(guildId);
+  const member = await guild.members.fetch(userId);
+  return REQUIRED_PERMISSIONS.some(perm => member.permissions.has(perm));
+}
+
 /**
  * Interactions endpoint URL where Discord will send HTTP requests
  * Parse request body and verifies incoming requests using discord-interactions package
@@ -87,18 +103,40 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
    * See https://discord.com/developers/docs/interactions/application-commands#slash-commands
    */
   if (type === InteractionType.APPLICATION_COMMAND) {
-    const { name } = data;
+    const rawName = data.name;
+    // Strip "dev_" if present
+    const name = rawName.replace(/^dev_/, '');
 
-    console.log(`Received command: ${name}`);
+    console.log(`Received command: ${rawName}`);
 
-    // "castlist" command (formerly "test")
+    // Skip permission check for castlist
+    if (name !== 'castlist') {
+      const hasPerms = await hasRequiredPermissions(req.body.guild_id, req.body.member.user.id);
+      if (!hasPerms) {
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: 'You do not have permission to use this command.',
+            flags: InteractionResponseFlags.EPHEMERAL,
+          },
+        });
+      }
+    }
+
     if (name === 'castlist') {
       try {
         console.log('Processing castlist command');
         const guildId = req.body.guild_id;
 
         // Load tribe IDs from JSON file
-        const tribeIDs = await loadTribeIds();
+        const rawData = fs.readFileSync('./tribes.json');
+        const tribesCfg = JSON.parse(rawData);
+        const tribeIDs = {
+          tribe1: tribesCfg.tribe1,
+          tribe2: tribesCfg.tribe2,
+          tribe3: tribesCfg.tribe3,
+          tribe4: tribesCfg.tribe4,
+        };
         console.log('Loaded tribe IDs:', tribeIDs);
 
         // Define the createMemberFields function first
@@ -121,6 +159,11 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
                 .filter(name => name !== '')
                 .join(', ');
 
+              // Add friendly message if no pronoun roles
+              if (!pronouns) {
+                pronouns = 'No pronoun roles';
+              }
+
               let timezone = timezoneRoleIds
                 .filter(timezoneRoleId => member.roles.cache.has(timezoneRoleId))
                 .map(timezoneRoleId => {
@@ -129,6 +172,11 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
                 })
                 .filter(name => name !== '')
                 .join(', ');
+
+              // Add friendly message if no timezone roles
+              if (!timezone) {
+                timezone = 'No timezone roles';
+              }
 
               const utcTime = Math.floor(Date.now() / 1000); // Current UTC timestamp
               let memberTime = utcTime;
@@ -243,7 +291,11 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
           }
           
           // Add tribe header and members
-          embed.addFields({ name: tribeRoles[i].name, value: '\u200B', inline: false });
+          const tribeEmoji = tribesCfg[`tribe${i + 1}emoji`] || '';
+          const header = tribeEmoji
+            ? `${tribeEmoji}  ${tribeRoles[i].name}  ${tribeEmoji}`
+            : tribeRoles[i].name;
+          embed.addFields({ name: header, value: '\u200B', inline: false });
           const memberFields = await createMemberFields(tribeMembers[i], fullGuild);
           console.log(`Generated ${memberFields.length} member fields for tribe ${i + 1}`);
           embed.addFields(memberFields);
@@ -261,10 +313,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         console.error('Error handling castlist command:', error);
       }
       return;
-    }
-
-    // "zzgetallguildroles" command
-    if (name === 'zzgetallguildroles') {
+    } else if (name === 'zzgetallguildroles') {
       try {
         console.log('Processing getAllGuildRoles command');
         const guildId = req.body.guild_id;
@@ -297,10 +346,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         console.error('Error handling getAllGuildRoles command:', error);
       }
       return;
-    }
-
-    // "zztest" command
-    if (name === 'zztest') {
+    } else if (name === 'zztest') {
       try {
         const userId = data.options[0].value;
         const guildId = req.body.guild_id;
@@ -367,10 +413,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         });
       }
       return;
-    }
-
-    // "zzgetroles" command
-    if (name === 'zzgetroles') {
+    } else if (name === 'zzgetroles') {
       try {
         console.log('Starting zzgetroles command...');
         
@@ -404,10 +447,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         });
       }
       return;
-    }
-
-    // Updated setage command
-    if (name === 'setage') {
+    } else if (name === 'setage') {
       try {
         const userId = data.options[0].value;
         const age = data.options[1].value;
@@ -436,9 +476,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
           },
         });
       }
-    }
-
-    if (name === 'checkdata') {
+    } else if (name === 'checkdata') {
       try {
         console.log('Starting checkdata command...');
         
@@ -473,10 +511,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         });
       }
       return;
-    }
-
-    // "playericons" command (formerly "zztest")
-    if (name === 'playericons') {
+    } else if (name === 'playericons') {
       try {
         const userId1 = data.options[0].value;
         const userId2 = data.options[1]?.value; // Optional second user ID
@@ -560,10 +595,316 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         });
       }
       return;
-    }
+    } else if (name === 'settribe1') {
+      try {
+        await res.send({
+          type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE
+        });
 
-    console.error(`unknown command: ${name}`);
-    return res.status(400).json({ error: 'unknown command' });
+        const tribeRoleId = data.options[0].value;
+        const rawData = fs.readFileSync('./tribes.json');
+        const tribesCfg = JSON.parse(rawData);
+        tribesCfg.tribe1 = tribeRoleId;
+        const emojiOption = data.options.find(o => o.name === 'emoji');
+        tribesCfg.tribe1emoji = emojiOption?.value || null;
+        fs.writeFileSync('./tribes.json', JSON.stringify(tribesCfg, null, 2));
+
+        const guildId = req.body.guild_id;
+        const guild = await client.guilds.fetch(guildId);
+        const members = await guild.members.fetch();
+        const targetMembers = members.filter(m => m.roles.cache.has(tribeRoleId));
+
+        let resultLines = [];
+
+        for (const [_, member] of targetMembers) {
+          try {
+            const avatarUrl = member.avatarURL({ size:128 }) || member.user.avatarURL({ size:128 });
+            if (!avatarUrl) continue;
+            const emoji = await guild.emojis.create({ attachment: avatarUrl, name: member.id });
+            await updatePlayer(member.id, { emojiCode: `<:${emoji.name}:${emoji.id}>` });
+            resultLines.push(`${member.displayName}: <:${emoji.name}:${emoji.id}>`);
+          } catch (err) {
+            console.error('Error creating emoji for', member.displayName, err);
+          }
+        }
+
+        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+        await DiscordRequest(endpoint, {
+          method: 'PATCH',
+          body: {
+            content: `Tribe1 role updated to ${tribeRoleId}\n\nCreated emojis:\n${resultLines.join('\n')}`,
+            flags: InteractionResponseFlags.EPHEMERAL
+          },
+        });
+
+        return;
+      } catch (error) {
+        console.error('Error setting tribe1:', error);
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: 'Error updating tribe1 role',
+            flags: InteractionResponseFlags.EPHEMERAL
+          },
+        });
+      }
+    } else if (name === 'settribe2') {
+      try {
+        // 1. Defer response to avoid immediate timeout
+        await res.send({
+          type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE
+        });
+
+        const tribeRoleId = data.options[0].value;
+        const rawData = fs.readFileSync('./tribes.json');
+        const tribesCfg = JSON.parse(rawData);
+        tribesCfg.tribe2 = tribeRoleId;
+        const emojiOption = data.options.find(o => o.name === 'emoji');
+        tribesCfg.tribe2emoji = emojiOption?.value || null;
+        fs.writeFileSync('./tribes.json', JSON.stringify(tribesCfg, null, 2));
+
+        const guildId = req.body.guild_id;
+        const guild = await client.guilds.fetch(guildId);
+        const members = await guild.members.fetch();
+        const targetMembers = members.filter(m => m.roles.cache.has(tribeRoleId));
+
+        let resultLines = [];
+
+        for (const [_, member] of targetMembers) {
+          try {
+            const avatarUrl = member.avatarURL({ size:128 }) || member.user.avatarURL({ size:128 });
+            if (!avatarUrl) continue;
+            const emoji = await guild.emojis.create({ attachment: avatarUrl, name: member.id });
+            await updatePlayer(member.id, { emojiCode: `<:${emoji.name}:${emoji.id}>` });
+            resultLines.push(`${member.displayName}: <:${emoji.name}:${emoji.id}>`);
+          } catch (err) {
+            console.error('Error creating emoji for', member.displayName, err);
+          }
+        }
+
+        // 2. Patch deferred response with the final message
+        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+        await DiscordRequest(endpoint, {
+          method: 'PATCH',
+          body: {
+            content: `Tribe2 role updated to ${tribeRoleId}\n\nCreated emojis:\n${resultLines.join('\n')}`,
+            flags: InteractionResponseFlags.EPHEMERAL
+          },
+        });
+
+        // Add a return here
+        return;
+      } catch (error) {
+        console.error('Error setting tribe2:', error);
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: 'Error updating tribe2 role',
+            flags: InteractionResponseFlags.EPHEMERAL
+          },
+        });
+      }
+    } else if (name === 'clearemoji') {
+      try {
+        await res.send({
+          type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE
+        });
+
+        const guildId = req.body.guild_id;
+        const guild = await client.guilds.fetch(guildId);
+        const playerData = await loadPlayerData();
+
+        for (const [playerId, data] of Object.entries(playerData)) {
+          if (data.emojiCode) {
+            const match = data.emojiCode.match(/<:\w+:(\d+)>/);
+            if (match && match[1]) {
+              try {
+                await guild.emojis.delete(match[1]);
+              } catch {}
+            }
+            data.emojiCode = null;
+          }
+        }
+
+        fs.writeFileSync('./playerData.json', JSON.stringify(playerData, null, 2));
+
+        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+        await DiscordRequest(endpoint, {
+          method: 'PATCH',
+          body: {
+            content: 'All saved emojis have been cleared.',
+            flags: InteractionResponseFlags.EPHEMERAL
+          },
+        });
+        return;
+      } catch (error) {
+        console.error('Error clearing emojis:', error);
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: 'Error clearing emojis.',
+            flags: InteractionResponseFlags.EPHEMERAL,
+          },
+        });
+      }
+    } else if (name === 'cleartribe1' || name === 'cleartribe2' || name === 'cleartribe3' || name === 'cleartribe4') {
+      try {
+        await res.send({ type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE });
+        const tribeRoleId = data.options[0].value;
+        const tribeKey = name.replace('clear', ''); // e.g. 'tribe1'
+        const rawData = fs.readFileSync('./tribes.json');
+        const tribesCfg = JSON.parse(rawData);
+        tribesCfg[tribeKey] = null;
+        tribesCfg[tribeKey + 'emoji'] = null;
+        fs.writeFileSync('./tribes.json', JSON.stringify(tribesCfg, null, 2));
+    
+        const guildId = req.body.guild_id;
+        const guild = await client.guilds.fetch(guildId);
+        const members = await guild.members.fetch();
+        const targetMembers = members.filter(member => member.roles.cache.has(tribeRoleId));
+    
+        const playerData = await loadPlayerData();
+        let resultLines = [];
+    
+        for (const [_, member] of targetMembers) {
+          if (playerData[member.id]) {
+            const emojiCode = playerData[member.id].emojiCode;
+            if (emojiCode) {
+              const match = emojiCode.match(/<:\w+:(\d+)>/);
+              if (match && match[1]) {
+                try {
+                  await guild.emojis.delete(match[1]);
+                  resultLines.push(`Deleted emoji for ${member.displayName}`);
+                } catch {}
+              }
+            }
+            delete playerData[member.id];
+            resultLines.push(`Removed player entry for ${member.displayName}`);
+          }
+        }
+    
+        fs.writeFileSync('./playerData.json', JSON.stringify(playerData, null, 2));
+        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+        await DiscordRequest(endpoint, {
+          method: 'PATCH',
+          body: {
+            content: `Cleared ${tribeKey}, set to null\n${resultLines.join('\n')}`,
+            flags: InteractionResponseFlags.EPHEMERAL
+          },
+        });
+        return;
+      } catch (err) {
+        console.error('Error clearing tribe:', err);
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: `Error clearing tribe`,
+            flags: InteractionResponseFlags.EPHEMERAL
+          },
+        });
+      }
+    } else if (name === 'cleartribeall') {
+      try {
+        await res.send({ type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE });
+    
+        let resultLines = [];
+        const rawData = fs.readFileSync('./tribes.json');
+        const tribesCfg = JSON.parse(rawData);
+        const guildId = req.body.guild_id;
+        const guild = await client.guilds.fetch(guildId);
+        const allRoleIds = [];
+    
+        // Collect all tribe roles
+        for (const key of ['tribe1','tribe2','tribe3','tribe4']) {
+          if (tribesCfg[key]) {
+            allRoleIds.push(tribesCfg[key]);
+            tribesCfg[key] = null;
+            tribesCfg[key + 'emoji'] = null;
+          }
+        }
+        fs.writeFileSync('./tribes.json', JSON.stringify(tribesCfg, null, 2));
+    
+        const members = await guild.members.fetch();
+        const playerData = await loadPlayerData();
+    
+        for (const [playerId, data] of Object.entries(playerData)) {
+          // Check if player has any of the old tribe roles
+          const member = members.get(playerId);
+          if (member && allRoleIds.some(roleId => member.roles.cache.has(roleId))) {
+            const emojiCode = data.emojiCode;
+            if (emojiCode) {
+              const match = emojiCode.match(/<:\w+:(\d+)>/);
+              if (match && match[1]) {
+                try {
+                  await guild.emojis.delete(match[1]);
+                  resultLines.push(`Deleted emoji for ${member.displayName}`);
+                } catch {}
+              }
+            }
+            delete playerData[playerId];
+            resultLines.push(`Removed player entry for ${member.displayName}`);
+          }
+        }
+        fs.writeFileSync('./playerData.json', JSON.stringify(playerData, null, 2));
+    
+        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+        await DiscordRequest(endpoint, {
+          method: 'PATCH',
+          body: {
+            content: `Cleared all tribes, set all to null\n${resultLines.join('\n')}`,
+            flags: InteractionResponseFlags.EPHEMERAL
+          },
+        });
+    
+        return;
+      } catch (err) {
+        console.error('Error clearing all tribes:', err);
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: 'Error clearing all tribes',
+            flags: InteractionResponseFlags.EPHEMERAL
+          },
+        });
+      }
+    } else if (name === 'setageall') {
+      try {
+        console.log('Processing setageall command');
+        const updates = [];
+
+        // Extract player IDs and ages from the command options
+        for (let i = 1; i <= 24; i++) {
+          const playerOption = data.options.find(option => option.name === `player${i}`);
+          const ageOption = data.options.find(option => option.name === `player${i}_age`);
+          if (playerOption && ageOption) {
+            updates.push({ playerId: playerOption.value, age: ageOption.value });
+          }
+        }
+
+        // Load existing player data
+        const rawData = fs.readFileSync('./playerData.json');
+        const playerData = JSON.parse(rawData);
+
+        // Update player data
+        updates.forEach(({ playerId, age }) => {
+          if (playerData.players[playerId]) {
+            playerData.players[playerId].age = age;
+          } else {
+            playerData.players[playerId] = { age };
+          }
+        });
+
+        fs.writeFileSync('./playerData.json', JSON.stringify(playerData, null, 2));
+        res.send({ type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE, data: { content: 'Ages updated successfully.' } });
+      } catch (err) {
+        console.error('Error processing setageall command:', err);
+        res.send({ type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE, data: { content: 'Failed to update ages.' } });
+      }
+      return;
+    } else {
+      console.error(`unknown command: ${rawName}`);
+      return res.status(400).json({ error: 'unknown command' });
+    }
   }
 
   /**

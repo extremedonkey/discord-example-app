@@ -3,7 +3,11 @@ import fetch from 'node-fetch';
 
 export async function DiscordRequest(endpoint, options) {
   const url = `https://discord.com/api/v10/${endpoint}`;
-  if (options.body) options.body = JSON.stringify(options.body);
+  if (options.body) {
+    options.body = typeof options.body === 'string'
+      ? options.body
+      : JSON.stringify(options.body);
+  }
   const res = await fetch(url, {
     headers: {
       Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
@@ -12,23 +16,37 @@ export async function DiscordRequest(endpoint, options) {
     ...options,
   });
   if (!res.ok) {
-    const data = await res.json();
-    console.log(res.status);
-    throw new Error(JSON.stringify(data));
+    const error = await res.text();
+    throw new Error(error);
   }
   return res.json();
 }
 
-export async function InstallGlobalCommands(appId, commands) {
-  // API endpoint to overwrite global commands
-  const endpoint = `applications/${appId}/commands`;
+export async function InstallGlobalCommands(appId, commands, guildId) {
+  // URL is different for guild-based commands
+  const endpoint = guildId 
+    ? `applications/${appId}/guilds/${guildId}/commands`
+    : `applications/${appId}/commands`;
 
   try {
-    // This is calling the bulk overwrite endpoint: https://discord.com/developers/docs/interactions/application-commands#bulk-overwrite-global-application-commands
-    const res = await DiscordRequest(endpoint, { method: 'PUT', body: commands });
-    console.log('Commands registered:', res);
+    const res = await fetch(`https://discord.com/api/v10/${endpoint}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bot ${process.env.DISCORD_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(commands)
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Error installing commands: ${text}`);
+    }
+
+    console.log(`Successfully installed commands${guildId ? ' to guild' : ' globally'}`);
   } catch (err) {
-    console.error('Error registering commands:', err);
+    console.error('Error installing commands:', err);
+    throw err;
   }
 }
 
