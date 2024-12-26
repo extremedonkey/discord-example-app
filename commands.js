@@ -285,6 +285,36 @@ const SET_AGE_ALL_COMMAND = {
   default_member_permissions: ADMIN_PERMISSIONS
 };
 
+const UTIL_DELETE_SERVER_EMOJI_COMMAND = {
+  name: maybePrependDev('util_deleteserveremoji'),
+  description: 'Delete an emoji from the server by its ID',
+  options: [
+    {
+      type: 3, // STRING type
+      name: 'emojiid',
+      description: 'The ID of the emoji to delete',
+      required: true,
+    }
+  ],
+  type: 1,
+  default_member_permissions: ADMIN_PERMISSIONS
+};
+
+const UTIL_DELETE_PLAYER_EMOJI_COMMAND = {
+  name: maybePrependDev('util_deleteplayeremoji'),
+  description: 'Delete a player\'s emoji and their entry from playerData.json',
+  options: [
+    {
+      type: 6, // USER type
+      name: 'user',
+      description: 'Select the user',
+      required: true,
+    }
+  ],
+  type: 1,
+  default_member_permissions: ADMIN_PERMISSIONS
+};
+
 const ALL_COMMANDS = [
   TEST_COMMAND,
   GET_ALL_GUILD_ROLES_COMMAND,
@@ -306,7 +336,9 @@ ALL_COMMANDS.push(
   CLEAR_TRIBE3_COMMAND,
   CLEAR_TRIBE4_COMMAND,
   CLEAR_TRIBEALL_COMMAND,
-  SET_AGE_ALL_COMMAND
+  SET_AGE_ALL_COMMAND,
+  UTIL_DELETE_SERVER_EMOJI_COMMAND,
+  UTIL_DELETE_PLAYER_EMOJI_COMMAND
 );
 
 console.log('Registering commands with:');
