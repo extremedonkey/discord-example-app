@@ -65,31 +65,7 @@ const GET_ALL_GUILD_ROLES_COMMAND = {
   default_member_permissions: ADMIN_PERMISSIONS
 };
 
-// Simple getroles command
-const ROLES_COMMAND = {
-  name: maybePrependDev('zzgetroles'),  // changed from 'getroles'
-  description: 'Reece seeing if he can do stuff',
-  type: 1,
-  default_member_permissions: ADMIN_PERMISSIONS
-};
-
 // Command containing options
-const CHALLENGE_COMMAND = {
-  name: maybePrependDev('zzchallenge'),  // changed from 'challenge'
-  description: 'Challenge to a match of rock paper scissors',
-  options: [
-    {
-      type: 3,
-      name: 'object',
-      description: 'Pick your object',
-      required: true,
-      choices: createCommandChoices(),
-    },
-  ],
-  type: 1,
-  default_member_permissions: ADMIN_PERMISSIONS
-};
-
 const SET_AGE_COMMAND = {
   name: maybePrependDev('setage'),
   description: 'Set the age for a specific user',
@@ -201,8 +177,8 @@ const CASTLIST_COMMAND = {
   type: 1,
 };
 
-const CHECKDATA_COMMAND = {
-  name: maybePrependDev('checkdata'),
+const UTIL_CHECK_DATA_COMMAND = {
+  name: maybePrependDev('util_checkdata'), // renamed from 'checkdata'
   description: 'Check stored player data',
   type: 1,
   default_member_permissions: ADMIN_PERMISSIONS
@@ -318,18 +294,13 @@ const UTIL_DELETE_PLAYER_EMOJI_COMMAND = {
 const ALL_COMMANDS = [
   TEST_COMMAND,
   GET_ALL_GUILD_ROLES_COMMAND,
-  CHALLENGE_COMMAND,
-  ROLES_COMMAND,
-  SET_AGE_COMMAND,
+  UTIL_SET_AGE_COMMAND,
   SET_TRIBE1_COMMAND,
   SET_TRIBE2_COMMAND,
   SET_TRIBE3_COMMAND,
   SET_TRIBE4_COMMAND,
   CASTLIST_COMMAND,
-  CHECKDATA_COMMAND,
-];
-
-ALL_COMMANDS.push(
+  UTIL_CHECK_DATA_COMMAND,
   CLEAR_EMOJI_COMMAND,
   CLEAR_TRIBE1_COMMAND,
   CLEAR_TRIBE2_COMMAND,
@@ -339,7 +310,7 @@ ALL_COMMANDS.push(
   SET_AGE_ALL_COMMAND,
   UTIL_DELETE_SERVER_EMOJI_COMMAND,
   UTIL_DELETE_PLAYER_EMOJI_COMMAND
-);
+];
 
 console.log('Registering commands with:');
 console.log('APP_ID:', process.env.APP_ID);
