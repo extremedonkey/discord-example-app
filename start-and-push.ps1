@@ -26,7 +26,12 @@ git push
 # Check if push was successful
 if ($LASTEXITCODE -ne 0) {
     echo "git push failed with exit code $LASTEXITCODE"
-    exit $LASTEXITCODE
+    echo "Setting upstream branch and pushing again..."
+    git push --set-upstream origin $(git symbolic-ref --short HEAD)
+    if ($LASTEXITCODE -ne 0) {
+        echo "git push with upstream failed with exit code $LASTEXITCODE"
+        exit $LASTEXITCODE
+    }
 }
 
 # Logging
