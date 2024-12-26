@@ -346,108 +346,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         console.error('Error handling getAllGuildRoles command:', error);
       }
       return;
-    } else if (name === 'zztest') {
-      try {
-        const userId = data.options[0].value;
-        const guildId = req.body.guild_id;
-        const guild = await client.guilds.fetch(guildId);
-        const member = await guild.members.fetch(userId);
-        
-        // Get member's guild-specific avatar URL, or fall back to their Discord avatar
-        const avatarURL = member.avatarURL({ size: 128 }) || member.user.avatarURL({ size: 128 });
-        
-        if (!avatarURL) {
-          return res.send({
-            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-            data: {
-              content: 'Error: Could not fetch user avatar.',
-              flags: InteractionResponseFlags.EPHEMERAL,
-            },
-          });
-        }
-
-        // Send initial response while we process the emoji
-        await res.send({
-          type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE,
-        });
-
-        try {
-          // Create emoji from avatar
-          const emoji = await guild.emojis.create({
-            attachment: avatarURL,
-            name: userId, // Use the user's ID as the emoji name
-          });
-
-          // Send success message with both the original avatar and the new emoji
-          const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
-          await DiscordRequest(endpoint, {
-            method: 'PATCH',
-            body: {
-              content: `Created emoji for ${member.displayName}! <:${emoji.name}:${emoji.id}>`,
-              embeds: [{
-                image: {
-                  url: avatarURL
-                }
-              }]
-            },
-          });
-        } catch (emojiError) {
-          console.error('Error creating emoji:', emojiError);
-          const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
-          await DiscordRequest(endpoint, {
-            method: 'PATCH',
-            body: {
-              content: `Error creating emoji. This might be because:\n- The server has reached its emoji limit\n- The image is too large\n- The bot lacks permissions`,
-              flags: InteractionResponseFlags.EPHEMERAL,
-            },
-          });
-        }
-      } catch (error) {
-        console.error('Error in zztest command:', error);
-        return res.send({
-          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
-            content: 'Error: Could not fetch user. Make sure the user ID is valid.',
-            flags: InteractionResponseFlags.EPHEMERAL,
-          },
-        });
-      }
-      return;
-    } else if (name === 'zzgetroles') {
-      try {
-        console.log('Starting zzgetroles command...');
-        
-        await res.send({
-          type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE,
-        });
-
-        const playerData = await loadPlayerData();
-        let content = JSON.stringify(playerData, null, 2);
-        
-        if (content.length > 1900) {
-          content = content.substring(0, 1900) + '\n... (truncated)';
-        }
-
-        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
-        await DiscordRequest(endpoint, {
-          method: 'PATCH',
-          body: {
-            content: `\`\`\`json\n${content}\n\`\`\``,
-          },
-        });
-
-      } catch (error) {
-        console.error('Error in zzgetroles command:', error);
-        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
-        await DiscordRequest(endpoint, {
-          method: 'PATCH',
-          body: {
-            content: 'Error reading player data',
-          },
-        });
-      }
-      return;
-    } else if (name === 'setage') {
+    } else if (name === 'util_setage') {
       try {
         const userId = data.options[0].value;
         const age = data.options[1].value;
@@ -476,7 +375,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
           },
         });
       }
-    } else if (name === 'checkdata') {
+    } else if (name === 'util_checkdata') {
       try {
         console.log('Starting checkdata command...');
         

@@ -66,8 +66,8 @@ const GET_ALL_GUILD_ROLES_COMMAND = {
 };
 
 // Command containing options
-const SET_AGE_COMMAND = {
-  name: maybePrependDev('setage'),
+const UTIL_SET_AGE_COMMAND = {
+  name: maybePrependDev('util_setage'), // renamed from 'setage'
   description: 'Set the age for a specific user',
   options: [
     {
@@ -294,7 +294,7 @@ const UTIL_DELETE_PLAYER_EMOJI_COMMAND = {
 const ALL_COMMANDS = [
   TEST_COMMAND,
   GET_ALL_GUILD_ROLES_COMMAND,
-  UTIL_SET_AGE_COMMAND,
+  UTIL_SET_AGE_COMMAND, // Updated reference
   SET_TRIBE1_COMMAND,
   SET_TRIBE2_COMMAND,
   SET_TRIBE3_COMMAND,
