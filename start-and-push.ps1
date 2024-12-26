@@ -37,15 +37,15 @@ function Stop-ProcessOnPort {
     )
     $netstat = netstat -ano | Select-String ":$port\s+.*LISTENING\s+(\d+)"
     if ($netstat) {
-        $pid = $netstat.Matches[0].Groups[1].Value
-        echo "Terminating process with PID $pid using port $port..."
-        Stop-Process -Id $pid -Force
+        $processId = $netstat.Matches[0].Groups[1].Value
+        echo "Terminating process with PID $processId using port $port..."
+        Stop-Process -Id $processId -Force
     }
 }
 
 # Terminate any process using port 3000
 Stop-ProcessOnPort -port 3000
 
-# Run npm start in the background
-echo "Running npm start..."
-Start-Process -NoNewWindow -FilePath "npm" -ArgumentList "run start"
+# Run npm start in the foreground
+echo "Running npm start...."
+npm run start
