@@ -1,108 +1,98 @@
-# Getting Started app for Discord
+# Castbot
 
-This project contains a basic rock-paper-scissors-style Discord app written in JavaScript, built for the [getting started guide](https://discord.com/developers/docs/getting-started).
+Castbot is a Discord bot designed to manage the Casting process in Online Reality Games (ORGs). This README provides an overview of the setup, usage, and available commands.
 
-![Demo of app](https://github.com/discord/discord-example-app/raw/main/assets/getting-started-demo.gif?raw=true)
+## Setup
 
-## Project structure
-Below is a basic overview of the project structure:
+### Prerequisites
 
-```
-├── examples    -> short, feature-specific sample apps
-│   ├── app.js  -> finished app.js code
-│   ├── button.js
-│   ├── command.js
-│   ├── modal.js
-│   ├── selectMenu.js
-├── .env.sample -> sample .env file
-├── app.js      -> main entrypoint for app
-├── commands.js -> slash command payloads + helpers
-├── game.js     -> logic specific to RPS
-├── utils.js    -> utility functions and enums
-├── package.json
-├── README.md
-└── .gitignore
-```
+- Node.js (v14 or higher)
+- npm (Node Package Manager)
+- Git
 
-## Running app locally
+### Installation
 
-Before you start, you'll need to install [NodeJS](https://nodejs.org/en/download/) and [create a Discord app](https://discord.com/developers/applications) with the proper permissions:
-- `applications.commands`
-- `bot` (with Send Messages enabled)
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/castbot.git
+   cd castbot/castbot
+   ```
 
+2. Install the dependencies:
+   ```bash
+   npm install
+   ```
 
-Configuring the app is covered in detail in the [getting started guide](https://discord.com/developers/docs/getting-started).
+3. Create a `.env` file in the root directory and add your environment variables:
+   ```env
+   DISCORD_TOKEN=your_discord_bot_token
+   PUBLIC_KEY=your_discord_public_key
+   APP_ID=your_discord_app_id
+   GUILD_ID=your_discord_guild_id
+   PORT=3000
+   ```
 
-### Setup project
+### Running the Bot
 
-First clone the project:
-```
-git clone https://github.com/discord/discord-example-app.git
-```
-
-Then navigate to its directory and install dependencies:
-```
-cd discord-example-app
-npm install
-```
-### Get app credentials
-
-Fetch the credentials from your app's settings and add them to a `.env` file (see `.env.sample` for an example). You'll need your app ID (`APP_ID`), bot token (`DISCORD_TOKEN`), and public key (`PUBLIC_KEY`).
-
-Fetching credentials is covered in detail in the [getting started guide](https://discord.com/developers/docs/getting-started).
-
-> 🔑 Environment variables can be added to the `.env` file in Glitch or when developing locally, and in the Secrets tab in Replit (the lock icon on the left).
-
-### Install slash commands
-
-The commands for the example app are set up in `commands.js`. All of the commands in the `ALL_COMMANDS` array at the bottom of `commands.js` will be installed when you run the `register` command configured in `package.json`:
-
-```
-npm run register
+To start the bot, run the following command:
+```bash
+npm start
 ```
 
-### Run the app
-
-After your credentials are added, go ahead and run the app:
-
-```
-node app.js
+Alternatively, you can use the provided PowerShell script to start the bot and commit any changes to Git:
+```powershell
+.\start-and-push.ps1
 ```
 
-> ⚙️ A package [like `nodemon`](https://github.com/remy/nodemon), which watches for local changes and restarts your app, may be helpful while locally developing.
+### Registering Slash Commands
 
-If you aren't following the [getting started guide](https://discord.com/developers/docs/getting-started), you can move the contents of `examples/app.js` (the finished `app.js` file) to the top-level `app.js`.
-
-### Set up interactivity
-
-The project needs a public endpoint where Discord can send requests. To develop and test locally, you can use something like [`ngrok`](https://ngrok.com/) to tunnel HTTP traffic.
-
-Install ngrok if you haven't already, then start listening on port `3000`:
-
-```
-ngrok http 3000
+To register the global and guild-specific slash commands, run the following PowerShell script:
+```powershell
+.\registerslashcommands.ps1
 ```
 
-You should see your connection open:
+## Usage
 
+### Available Commands
+
+The following commands are available in Castbot:
+
+- **/castlist**: Display the dynamic castlist.
+- **/setage**: Set the age for a specific user.
+- **/settribe1**: Set up the 1st tribe in your dynamic castlist.
+- **/settribe2**: Set up the 2nd tribe in your dynamic castlist.
+- **/settribe3**: Set up the 3rd tribe in your dynamic castlist.
+- **/settribe4**: Set up the 4th tribe in your dynamic castlist.
+- **/cleartribe1**: Clear tribe1, remove associated players and emojis.
+- **/cleartribe2**: Clear tribe2, remove associated players and emojis.
+- **/cleartribe3**: Clear tribe3, remove associated players and emojis.
+- **/cleartribe4**: Clear tribe4, remove associated players and emojis.
+- **/cleartribeall**: Clear all tribes and remove associated players and emojis.
+- **/clearemoji**: Clear saved emojis and delete them from the guild.
+- **/checkdata**: Check stored player data.
+- **/playericons**: Create player icons from avatars.
+- **/util_deleteserveremoji**: Delete an emoji from the server by its ID.
+- **/util_deleteplayeremoji**: Delete a player's emoji and their entry from playerData.json.
+- **/zzgetallguildroles**: Get all role IDs in the guild.
+- **/zzgetroles**: Reece seeing if he can do stuff.
+- **/zzchallenge**: Challenge to a match of rock paper scissors.
+
+### Example Usage
+
+To set the age for a user, use the `/setage` command:
+```bash
+/setage userid:123456789012345678 age:25
 ```
-Tunnel Status                 online
-Version                       2.0/2.0
-Web Interface                 http://127.0.0.1:4040
-Forwarding                    https://1234-someurl.ngrok.io -> localhost:3000
 
-Connections                  ttl     opn     rt1     rt5     p50     p90
-                              0       0       0.00    0.00    0.00    0.00
+To display the dynamic castlist, use the `/castlist` command:
+```bash
+/castlist
 ```
 
-Copy the forwarding address that starts with `https`, in this case `https://1234-someurl.ngrok.io`, then go to your [app's settings](https://discord.com/developers/applications).
+## Contributing
 
-On the **General Information** tab, there will be an **Interactions Endpoint URL**. Paste your ngrok address there, and append `/interactions` to it (`https://1234-someurl.ngrok.io/interactions` in the example).
+Contributions are welcome! Please fork the repository and submit a pull request with your changes.
 
-Click **Save Changes**, and your app should be ready to run 🚀
+## License
 
-## Other resources
-- Read **[the documentation](https://discord.com/developers/docs/intro)** for in-depth information about API features.
-- Browse the `examples/` folder in this project for smaller, feature-specific code examples
-- Join the **[Discord Developers server](https://discord.gg/discord-developers)** to ask questions about the API, attend events hosted by the Discord API team, and interact with other devs.
-- Check out **[community resources](https://discord.com/developers/docs/topics/community-resources#community-resources)** for language-specific tools maintained by community members.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
