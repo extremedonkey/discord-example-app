@@ -44,16 +44,11 @@ const timezoneOffsets = {
   '1320094634646704350': -3,  // ADT (UTC-3)
 };
 
-// Define role IDs first
-const pronounRoleIDs = [
-  '1297199987498946673',
-  '1297199988375293972',
-  '1297199988954370068',
-  '1317667003015626795',
-  '1317667163854868552',
-  '1297199989646299208',
-];
+// Load pronoun role IDs from JSON file
+const pronounsConfig = JSON.parse(fs.readFileSync('./pronouns.json'));
+const pronounRoleIDs = pronounsConfig.pronounRoleIDs;
 
+// Define role IDs first
 const timezoneRoleIds = [
   '1320094346288300124',
   '1320094467486908507',
