@@ -291,6 +291,60 @@ const UTIL_DELETE_PLAYER_EMOJI_COMMAND = {
   default_member_permissions: ADMIN_PERMISSIONS
 };
 
+const ADD_PRONOUNS_COMMAND = {
+  name: maybePrependDev('addpronouns'),
+  description: 'Add roles to pronouns list',
+  options: [
+    {
+      type: 8, // ROLE type
+      name: 'role1',
+      description: 'First pronoun role to add',
+      required: true,
+    },
+    {
+      type: 8,
+      name: 'role2',
+      description: 'Second pronoun role to add',
+      required: false,
+    },
+    {
+      type: 8,
+      name: 'role3',
+      description: 'Third pronoun role to add',
+      required: false,
+    }
+  ],
+  type: 1,
+  default_member_permissions: ADMIN_PERMISSIONS
+};
+
+const REMOVE_PRONOUNS_COMMAND = {
+  name: maybePrependDev('removepronouns'),
+  description: 'Remove roles from pronouns list',
+  options: [
+    {
+      type: 8, // ROLE type
+      name: 'role1',
+      description: 'First pronoun role to remove',
+      required: true,
+    },
+    {
+      type: 8,
+      name: 'role2',
+      description: 'Second pronoun role to remove',
+      required: false,
+    },
+    {
+      type: 8,
+      name: 'role3',
+      description: 'Third pronoun role to remove',
+      required: false,
+    }
+  ],
+  type: 1,
+  default_member_permissions: ADMIN_PERMISSIONS
+};
+
 const ALL_COMMANDS = [
   TEST_COMMAND,
   GET_ALL_GUILD_ROLES_COMMAND,
@@ -309,7 +363,9 @@ const ALL_COMMANDS = [
   CLEAR_TRIBEALL_COMMAND,
   SET_AGE_ALL_COMMAND,
   UTIL_DELETE_SERVER_EMOJI_COMMAND,
-  UTIL_DELETE_PLAYER_EMOJI_COMMAND
+  UTIL_DELETE_PLAYER_EMOJI_COMMAND,
+  ADD_PRONOUNS_COMMAND,
+  REMOVE_PRONOUNS_COMMAND
 ];
 
 console.log('Registering commands with:');
