@@ -51,4 +51,4 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # Logging
-echo "Changes have been committed and pushed."
+echo "Changes have been committed and pushed boyee."
