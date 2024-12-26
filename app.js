@@ -1145,7 +1145,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         let emojiDeleted = false;
         try {
           await guild.emojis.delete(emojiId);
-          console.log(`Deleted emoji with ID: ${emojiId}`);
+          console.log(`Deleted emoji with this ID: ${emojiId}`);
           emojiDeleted = true;
         } catch (err) {
           console.error(`Error deleting emoji with ID: ${emojiId}`, err);
