@@ -1072,6 +1072,126 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
           },
         });
       }
+    } else if (name === 'addpronouns') {
+      try {
+        console.log('Processing addpronouns command');
+        await res.send({
+          type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE
+        });
+
+        // Get all role options that were provided
+        const roleOptions = ['role1', 'role2', 'role3']
+          .map(roleName => data.options.find(opt => opt.name === roleName))
+          .filter(opt => opt !== undefined)
+          .map(opt => opt.value);
+
+        console.log('Roles to add:', roleOptions);
+
+        // Load current pronouns
+        const pronounsData = JSON.parse(fs.readFileSync('./pronouns.json'));
+        const currentPronouns = new Set(pronounsData.pronounRoleIDs);
+        const added = [];
+        const alreadyExists = [];
+
+        // Add new roles
+        roleOptions.forEach(roleId => {
+          if (currentPronouns.has(roleId)) {
+            alreadyExists.push(roleId);
+          } else {
+            currentPronouns.add(roleId);
+            added.push(roleId);
+          }
+        });
+
+        // Save updated pronouns
+        pronounsData.pronounRoleIDs = Array.from(currentPronouns);
+        fs.writeFileSync('./pronouns.json', JSON.stringify(pronounsData, null, 2));
+
+        // Prepare response message
+        const addedMsg = added.length > 0 ? `Added roles: ${added.join(', ')}` : '';
+        const existsMsg = alreadyExists.length > 0 ? `Already existed: ${alreadyExists.join(', ')}` : '';
+        const message = [addedMsg, existsMsg].filter(msg => msg).join('\n');
+
+        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+        await DiscordRequest(endpoint, {
+          method: 'PATCH',
+          body: {
+            content: message || 'No changes made to pronoun roles.',
+            flags: InteractionResponseFlags.EPHEMERAL
+          },
+        });
+      } catch (error) {
+        console.error('Error processing addpronouns command:', error);
+        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+        await DiscordRequest(endpoint, {
+          method: 'PATCH',
+          body: {
+            content: 'Error updating pronoun roles.',
+            flags: InteractionResponseFlags.EPHEMERAL
+          },
+        });
+      }
+      return;
+    } else if (name === 'removepronouns') {
+      try {
+        console.log('Processing removepronouns command');
+        await res.send({
+          type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE
+        });
+
+        // Get all role options that were provided
+        const roleOptions = ['role1', 'role2', 'role3']
+          .map(roleName => data.options.find(opt => opt.name === roleName))
+          .filter(opt => opt !== undefined)
+          .map(opt => opt.value);
+
+        console.log('Roles to remove:', roleOptions);
+
+        // Load current pronouns
+        const pronounsData = JSON.parse(fs.readFileSync('./pronouns.json'));
+        const currentPronouns = new Set(pronounsData.pronounRoleIDs);
+        const removed = [];
+        const notFound = [];
+
+        // Remove roles
+        roleOptions.forEach(roleId => {
+          if (currentPronouns.has(roleId)) {
+            currentPronouns.delete(roleId);
+            removed.push(roleId);
+          } else {
+            notFound.push(roleId);
+          }
+        });
+
+        // Save updated pronouns
+        pronounsData.pronounRoleIDs = Array.from(currentPronouns);
+        fs.writeFileSync('./pronouns.json', JSON.stringify(pronounsData, null, 2));
+
+        // Prepare response message
+        const removedMsg = removed.length > 0 ? `Removed roles: ${removed.join(', ')}` : '';
+        const notFoundMsg = notFound.length > 0 ? `Not found: ${notFound.join(', ')}` : '';
+        const message = [removedMsg, notFoundMsg].filter(msg => msg).join('\n');
+
+        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+        await DiscordRequest(endpoint, {
+          method: 'PATCH',
+          body: {
+            content: message || 'No changes made to pronoun roles.',
+            flags: InteractionResponseFlags.EPHEMERAL
+          },
+        });
+      } catch (error) {
+        console.error('Error processing removepronouns command:', error);
+        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+        await DiscordRequest(endpoint, {
+          method: 'PATCH',
+          body: {
+            content: 'Error updating pronoun roles.',
+            flags: InteractionResponseFlags.EPHEMERAL
+          },
+        });
+      }
+      return;
     }
 
     // ...existing code...
