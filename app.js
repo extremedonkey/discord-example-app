@@ -1086,10 +1086,6 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
     } else if (name === 'util_deleteplayeremoji') {
       try {
         console.log('Received /util_deleteplayeremoji command');
-        await res.send({
-          type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE
-        });
-
         const guildId = req.body.guild_id;
         const guild = await client.guilds.fetch(guildId);
         console.log(`Fetched guild: ${guild.name}`);
@@ -1121,10 +1117,9 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         });
       } catch (error) {
         console.error('Error handling /util_deleteplayeremoji command:', error);
-        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
-        await DiscordRequest(endpoint, {
-          method: 'PATCH',
-          body: {
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
             content: 'Error handling /util_deleteplayeremoji command',
             flags: InteractionResponseFlags.EPHEMERAL
           },
