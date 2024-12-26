@@ -305,9 +305,9 @@ const UTIL_DELETE_PLAYER_EMOJI_COMMAND = {
   description: 'Delete a player\'s emoji and their entry from playerData.json',
   options: [
     {
-      type: 6, // USER type
-      name: 'user',
-      description: 'Select the user',
+      type: 3, // STRING type
+      name: 'userid',
+      description: 'Discord User ID to delete emoji for',
       required: true,
     }
   ],

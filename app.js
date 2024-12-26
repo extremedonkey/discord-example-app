@@ -1086,40 +1086,93 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
     } else if (name === 'util_deleteplayeremoji') {
       try {
         console.log('Received /util_deleteplayeremoji command');
+        await res.send({
+          type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE
+        });
+
+        const userId = data.options.find(option => option.name === 'userid').value;
+        console.log(`User ID to delete emoji for: ${userId}`);
+
         const guildId = req.body.guild_id;
         const guild = await client.guilds.fetch(guildId);
         console.log(`Fetched guild: ${guild.name}`);
 
-        const members = await guild.members.fetch();
-        const memberOptions = members.map(member => ({
-          label: member.displayName,
-          value: member.id
-        }));
+        const playerData = await loadPlayerData();
+        if (!playerData.players[userId]) {
+          console.log(`No player data found for user ID: ${userId}`);
+          const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+          await DiscordRequest(endpoint, {
+            method: 'PATCH',
+            body: {
+              content: `No player data found for user ID: ${userId}`,
+              flags: InteractionResponseFlags.EPHEMERAL
+            },
+          });
+          return;
+        }
 
-        await res.send({
-          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
-            content: 'Select a user to delete their emoji:',
-            components: [
-              {
-                type: MessageComponentTypes.ACTION_ROW,
-                components: [
-                  {
-                    type: MessageComponentTypes.STRING_SELECT,
-                    custom_id: 'select_user_for_emoji_deletion',
-                    options: memberOptions
-                  }
-                ]
-              }
-            ],
+        const emojiCode = playerData.players[userId].emojiCode;
+        if (!emojiCode) {
+          console.log(`No emojiCode found for user ID: ${userId}`);
+          const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+          await DiscordRequest(endpoint, {
+            method: 'PATCH',
+            body: {
+              content: `No emojiCode found for user ID: ${userId}`,
+              flags: InteractionResponseFlags.EPHEMERAL
+            },
+          });
+          return;
+        }
+
+        const match = emojiCode.match(/<:\w+:(\d+)>/);
+        if (!match || !match[1]) {
+          console.log(`Invalid emojiCode format for user ID: ${userId}`);
+          const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+          await DiscordRequest(endpoint, {
+            method: 'PATCH',
+            body: {
+              content: `Invalid emojiCode format for user ID: ${userId}`,
+              flags: InteractionResponseFlags.EPHEMERAL
+            },
+          });
+          return;
+        }
+
+        const emojiId = match[1];
+        console.log(`Emoji ID to delete: ${emojiId}`);
+
+        let emojiDeleted = false;
+        try {
+          await guild.emojis.delete(emojiId);
+          console.log(`Deleted emoji with ID: ${emojiId}`);
+          emojiDeleted = true;
+        } catch (err) {
+          console.error(`Error deleting emoji with ID: ${emojiId}`, err);
+        }
+
+        delete playerData.players[userId].emojiCode;
+        fs.writeFileSync('./playerData.json', JSON.stringify(playerData, null, 2));
+        console.log(`Deleted emojiCode for user ID: ${userId}`);
+
+        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+        await DiscordRequest(endpoint, {
+          method: 'PATCH',
+          body: {
+            content: emojiDeleted
+              ? `Successfully deleted emoji and emojiCode for user ID: ${userId}`
+              : `Failed to delete emoji from server, but deleted emojiCode for user ID: ${userId}`,
             flags: InteractionResponseFlags.EPHEMERAL
-          }
+          },
         });
+
+        return;
       } catch (error) {
-        console.error('Error handling /util_deleteplayeremoji command:', error);
-        return res.send({
-          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
+        console.error('There was an error handling /util_deleteplayeremoji command:', error);
+        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+        await DiscordRequest(endpoint, {
+          method: 'PATCH',
+          body: {
             content: 'Error handling /util_deleteplayeremoji command',
             flags: InteractionResponseFlags.EPHEMERAL
           },
@@ -1210,89 +1263,10 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
           console.error('Error sending message:', err);
         }
       }
-    } else if (componentId === 'select_user_for_emoji_deletion') {
-      const userId = data.values[0];
-      console.log(`User ID to delete emoji for: ${userId}`);
-
-      const guildId = req.body.guild_id;
-      const guild = await client.guilds.fetch(guildId);
-      console.log(`Fetched guild: ${guild.name}`);
-
-      const playerData = await loadPlayerData();
-      if (!playerData.players[userId]) {
-        console.log(`No player data found for user ID: ${userId}`);
-        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
-        await DiscordRequest(endpoint, {
-          method: 'PATCH',
-          body: {
-            content: `No player data found for user ID: ${userId}`,
-            flags: InteractionResponseFlags.EPHEMERAL
-          },
-        });
-        return;
-      }
-
-      const emojiCode = playerData.players[userId].emojiCode;
-      if (!emojiCode) {
-        console.log(`No emojiCode found for user ID: ${userId}`);
-        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
-        await DiscordRequest(endpoint, {
-          method: 'PATCH',
-          body: {
-            content: `No emojiCode found for user ID: ${userId}`,
-            flags: InteractionResponseFlags.EPHEMERAL
-          },
-        });
-        return;
-      }
-
-      const match = emojiCode.match(/<:\w+:(\d+)>/);
-      if (!match || !match[1]) {
-        console.log(`Invalid emojiCode format for user ID: ${userId}`);
-        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
-        await DiscordRequest(endpoint, {
-          method: 'PATCH',
-          body: {
-            content: `Invalid emojiCode format for user ID: ${userId}`,
-            flags: InteractionResponseFlags.EPHEMERAL
-          },
-        });
-        return;
-      }
-
-      const emojiId = match[1];
-      console.log(`Emoji ID to delete: ${emojiId}`);
-
-      let emojiDeleted = false;
-      try {
-        await guild.emojis.delete(emojiId);
-        console.log(`Deleted emoji with ID: ${emojiId}`);
-        emojiDeleted = true;
-      } catch (err) {
-        console.error(`Error deleting emoji with ID: ${emojiId}`, err);
-      }
-
-      delete playerData.players[userId].emojiCode;
-      fs.writeFileSync('./playerData.json', JSON.stringify(playerData, null, 2));
-      console.log(`Deleted emojiCode for user ID: ${userId}`);
-
-      const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
-      await DiscordRequest(endpoint, {
-        method: 'PATCH',
-        body: {
-          content: emojiDeleted
-            ? `Successfully deleted emoji and emojiCode for user ID: ${userId}`
-            : `Failed to delete emoji from server, but deleted emojiCode for user ID: ${userId}`,
-          flags: InteractionResponseFlags.EPHEMERAL
-        },
-      });
     }
 
     return;
   }
-
-
-
 
   console.error('unknown interaction type', type);
   return res.status(400).json({ error: 'unknown interaction type' });
