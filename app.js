@@ -1469,20 +1469,25 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         });
       }
       return;
-    } else if (name === 'settribe3') {
+    } else if (name.startsWith('settribe') && /settribe[1-4]$/.test(name)) {
       try {
         await res.send({
           type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE
         });
 
-        const tribeRoleId = data.options.find(option => option.name === 'role').value;
+        // Extract tribe number from command name
+        const tribeNum = name.charAt(name.length - 1);
+        const tribeKey = `tribe${tribeNum}`;
+        const tribeEmojiKey = `tribe${tribeNum}emoji`;
+
+        const tribeRoleId = data.options.find(option => option.name === 'role')?.value || data.options[0].value;
         const emojiOption = data.options.find(option => option.name === 'emoji');
-        const tribeEmoji = emojiOption ? emojiOption.value : null;
+        const tribeEmoji = emojiOption?.value || null;
 
         const rawData = fs.readFileSync('./tribes.json');
         const tribesCfg = JSON.parse(rawData);
-        tribesCfg.tribe3 = tribeRoleId;
-        tribesCfg.tribe3emoji = tribeEmoji;
+        tribesCfg[tribeKey] = tribeRoleId;
+        tribesCfg[tribeEmojiKey] = tribeEmoji;
         fs.writeFileSync('./tribes.json', JSON.stringify(tribesCfg, null, 2));
 
         const guildId = req.body.guild_id;
@@ -1530,7 +1535,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         }
 
         const messageLines = [
-          `Tribe3 role updated to ${tribeRoleId}`,
+          `${tribeKey} role updated to ${tribeRoleId}`,
           ''
         ];
 
@@ -1567,123 +1572,16 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
 
         return;
       } catch (error) {
-        console.error('Error setting tribe3:', error);
+        console.error(`Error setting ${name}:`, error);
         return res.send({
           type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
           data: {
-            content: 'Error updating tribe3 role',
+            content: `Error updating ${name} role`,
             flags: InteractionResponseFlags.EPHEMERAL
           },
         });
       }
-    } else if (name === 'settribe4') {
-      try {
-        await res.send({
-          type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE
-        });
-
-        const tribeRoleId = data.options.find(option => option.name === 'role').value;
-        const emojiOption = data.options.find(option => option.name === 'emoji');
-        const tribeEmoji = emojiOption ? emojiOption.value : null;
-
-        const rawData = fs.readFileSync('./tribes.json');
-        const tribesCfg = JSON.parse(rawData);
-        tribesCfg.tribe4 = tribeRoleId;
-        tribesCfg.tribe4emoji = tribeEmoji;
-        fs.writeFileSync('./tribes.json', JSON.stringify(tribesCfg, null, 2));
-
-        const guildId = req.body.guild_id;
-        const guild = await client.guilds.fetch(guildId);
-        const members = await guild.members.fetch();
-        const targetMembers = members.filter(m => m.roles.cache.has(tribeRoleId));
-        const playerData = await loadPlayerData();
-
-        let resultLines = [];
-        let existingLines = [];
-        let errorLines = [];
-        let maxEmojiReached = false;
-
-        for (const [_, member] of targetMembers) {
-          try {
-            // Check if player already has an emoji
-            const existingPlayer = playerData.players[member.id];
-            if (existingPlayer?.emojiCode) {
-              existingLines.push(`${member.displayName}: Already has emoji \`${existingPlayer.emojiCode}\``);
-              continue;
-            }
-
-            const avatarUrl = member.avatarURL({ size: 128 }) || member.user.avatarURL({ size: 128 });
-            if (!avatarUrl) continue;
-
-            try {
-              const emoji = await guild.emojis.create({ attachment: avatarUrl, name: member.id });
-              const emojiCode = `<:${emoji.name}:${emoji.id}>`;
-              await updatePlayer(member.id, { emojiCode });
-              resultLines.push(`${member.displayName} ${emojiCode} \`${emojiCode}\``);
-            } catch (emojiError) {
-              if (emojiError.code === 30008) {
-                const limit = emojiError.rawError?.message.match(/\((\d+)\)/)?.[1] || '50';
-                errorLines.push(`${member.displayName}: Failed to upload emoji - maximum number of server emojis reached (${limit}). Please delete some emojis from the server and run the command again.`);
-                maxEmojiReached = true;
-              } else {
-                errorLines.push(`${member.displayName}: Failed to upload emoji - unknown error encountered.`);
-                console.error(`Error creating emoji for ${member.displayName}:`, emojiError);
-              }
-            }
-          } catch (err) {
-            console.error('Error processing member', member.displayName, err);
-            errorLines.push(`${member.displayName}: Failed to process member - unknown error encountered.`);
-          }
-        }
-
-        const messageLines = [
-          `Tribe4 role updated to ${tribeRoleId}`,
-          ''
-        ];
-
-        if (resultLines.length > 0) {
-          messageLines.push('Successfully created emojis:');
-          messageLines.push(...resultLines);
-          messageLines.push('');
-        }
-
-        if (existingLines.length > 0) {
-          messageLines.push('Existing emojis found:');
-          messageLines.push(...existingLines);
-          messageLines.push('');
-        }
-
-        if (errorLines.length > 0) {
-          messageLines.push('Errors encountered:');
-          messageLines.push(...errorLines);
-        }
-
-        if (maxEmojiReached) {
-          messageLines.push('');
-          messageLines.push('⚠️ Server emoji limit reached. Some emojis could not be created.');
-        }
-
-        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
-        await DiscordRequest(endpoint, {
-          method: 'PATCH',
-          body: {
-            content: messageLines.join('\n'),
-            flags: InteractionResponseFlags.EPHEMERAL
-          },
-        });
-
-        return;
-      } catch (error) {
-        console.error('Error setting tribe4:', error);
-        return res.send({
-          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
-            content: 'Error updating tribe4 role',
-            flags: InteractionResponseFlags.EPHEMERAL
-          },
-        });
-      }
-    }
+    } // <-- Ensure this closing brace is present
 
     // ...existing code...
   }
