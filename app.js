@@ -507,26 +507,54 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         const guild = await client.guilds.fetch(guildId);
         const members = await guild.members.fetch();
         const targetMembers = members.filter(m => m.roles.cache.has(tribeRoleId));
+        const playerData = await loadPlayerData();
 
         let resultLines = [];
+        let existingLines = [];
 
         for (const [_, member] of targetMembers) {
           try {
+            // Check if player already has an emoji
+            const existingPlayer = playerData.players[member.id];
+            if (existingPlayer?.emojiCode) {
+              existingLines.push(`${member.displayName}: Already has emoji \`${existingPlayer.emojiCode}\``);
+              continue;
+            }
+
             const avatarUrl = member.avatarURL({ size:128 }) || member.user.avatarURL({ size:128 });
             if (!avatarUrl) continue;
+
             const emoji = await guild.emojis.create({ attachment: avatarUrl, name: member.id });
-            await updatePlayer(member.id, { emojiCode: `<:${emoji.name}:${emoji.id}>` });
-            resultLines.push(`${member.displayName}: <:${emoji.name}:${emoji.id}>`);
+            const emojiCode = `<:${emoji.name}:${emoji.id}>`;
+            await updatePlayer(member.id, { emojiCode });
+            resultLines.push(`${member.displayName} ${emojiCode} \`${emojiCode}\``);
           } catch (err) {
             console.error('Error creating emoji for', member.displayName, err);
           }
+        }
+
+        const messageLines = [
+          `Tribe1 role updated to ${tribeRoleId}`,
+          '',
+          'Player Emojis:'
+        ];
+
+        if (resultLines.length > 0) {
+          messageLines.push('New emojis created:');
+          messageLines.push(...resultLines);
+        }
+
+        if (existingLines.length > 0) {
+          if (resultLines.length > 0) messageLines.push(''); // Add spacing
+          messageLines.push('Existing emojis found:');
+          messageLines.push(...existingLines);
         }
 
         const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
         await DiscordRequest(endpoint, {
           method: 'PATCH',
           body: {
-            content: `Tribe1 role updated to ${tribeRoleId}\n\nCreated emojis:\n${resultLines.join('\n')}`,
+            content: messageLines.join('\n'),
             flags: InteractionResponseFlags.EPHEMERAL
           },
         });
