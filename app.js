@@ -574,9 +574,10 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
           if (!avatarUrl) continue;
           try {
             const emoji = await guild.emojis.create({ attachment: avatarUrl, name: member.id });
-            await updatePlayer(member.id, { emojiCode: `<:${emoji.name}:${emoji.id}>` });
-            console.log(`Created emoji for ${member.displayName}: <:${emoji.name}:${emoji.id}>`);
-            resultLines.push(`${member.displayName}: <:${emoji.name}:${emoji.id}>`);
+            const emojiCode = `<:${emoji.name}:${emoji.id}>`;
+            await updatePlayer(member.id, { emojiCode }); // Update player data
+            console.log(`Created emoji for ${member.displayName}: ${emojiCode}`);
+            resultLines.push(`${member.displayName}: ${emojiCode}`);
           } catch (err) {
             console.error(`Error creating emoji for ${member.displayName}:`, err);
             resultLines.push(`Failed to create emoji for ${member.displayName}`);
@@ -1192,6 +1193,150 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         });
       }
       return;
+    } else if (name === 'settribe3') {
+      try {
+        console.log('Received /settribe3 command');
+        await res.send({
+          type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE
+        });
+
+        const tribeRoleId = data.options.find(option => option.name === 'role').value;
+        const emojiOption = data.options.find(option => option.name === 'emoji');
+        const tribeEmoji = emojiOption ? emojiOption.value : null;
+
+        console.log(`Tribe Role ID: ${tribeRoleId}`);
+        console.log(`Tribe Emoji: ${tribeEmoji}`);
+
+        const guildId = req.body.guild_id;
+        const guild = await client.guilds.fetch(guildId);
+        console.log(`Fetched guild: ${guild.name}`);
+
+        const members = await guild.members.fetch();
+        console.log(`Fetched ${members.size} members`);
+        const targetMembers = members.filter(m => m.roles.cache.has(tribeRoleId));
+        console.log(`Found ${targetMembers.size} members with tribe role`);
+
+        const playerData = await loadPlayerData(guildId);
+        console.log('Loaded player data');
+        let resultLines = [];
+
+        for (const [_, member] of targetMembers) {
+          const avatarUrl = member.avatarURL({ size: 128 }) || member.user.avatarURL({ size: 128 });
+          if (!avatarUrl) continue;
+          try {
+            const emoji = await guild.emojis.create({ attachment: avatarUrl, name: member.id });
+            await updatePlayer(member.id, { emojiCode: `<:${emoji.name}:${emoji.id}>` });
+            console.log(`Created emoji for ${member.displayName}: <:${emoji.name}:${emoji.id}>`);
+            resultLines.push(`${member.displayName}: <:${emoji.name}:${emoji.id}>`);
+          } catch (err) {
+            console.error(`Error creating emoji for ${member.displayName}:`, err);
+            resultLines.push(`Failed to create emoji for ${member.displayName}`);
+          }
+        }
+
+        fs.writeFileSync('./playerData.json', JSON.stringify(playerData, null, 2));
+        console.log('Updated playerData.json');
+
+        const rawData = fs.readFileSync('./tribes.json');
+        const tribesCfg = JSON.parse(rawData);
+        tribesCfg.tribe3 = tribeRoleId;
+        tribesCfg.tribe3emoji = tribeEmoji;
+        fs.writeFileSync('./tribes.json', JSON.stringify(tribesCfg, null, 2));
+        console.log('Updated tribes.json');
+
+        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+        await DiscordRequest(endpoint, {
+          method: 'PATCH',
+          body: {
+            content: `Tribe3 role set to ${tribeRoleId} with emoji ${tribeEmoji}\n\nCreated emojis:\n${resultLines.join('\n')}`,
+            flags: InteractionResponseFlags.EPHEMERAL
+          },
+        });
+
+        return;
+      } catch (error) {
+        console.error('Error setting tribe3:', error);
+        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+        await DiscordRequest(endpoint, {
+          method: 'PATCH',
+          body: {
+            content: 'Error setting tribe3 role',
+            flags: InteractionResponseFlags.EPHEMERAL
+          },
+        });
+      }
+    } else if (name === 'settribe4') {
+      try {
+        console.log('Received /settribe4 command');
+        await res.send({
+          type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE
+        });
+
+        const tribeRoleId = data.options.find(option => option.name === 'role').value;
+        const emojiOption = data.options.find(option => option.name === 'emoji');
+        const tribeEmoji = emojiOption ? emojiOption.value : null;
+
+        console.log(`Tribe Role ID: ${tribeRoleId}`);
+        console.log(`Tribe Emoji: ${tribeEmoji}`);
+
+        const guildId = req.body.guild_id;
+        const guild = await client.guilds.fetch(guildId);
+        console.log(`Fetched guild: ${guild.name}`);
+
+        const members = await guild.members.fetch();
+        console.log(`Fetched ${members.size} members`);
+        const targetMembers = members.filter(m => m.roles.cache.has(tribeRoleId));
+        console.log(`Found ${targetMembers.size} members with tribe role`);
+
+        const playerData = await loadPlayerData(guildId);
+        console.log('Loaded player data');
+        let resultLines = [];
+
+        for (const [_, member] of targetMembers) {
+          const avatarUrl = member.avatarURL({ size: 128 }) || member.user.avatarURL({ size: 128 });
+          if (!avatarUrl) continue;
+          try {
+            const emoji = await guild.emojis.create({ attachment: avatarUrl, name: member.id });
+            await updatePlayer(member.id, { emojiCode: `<:${emoji.name}:${emoji.id}>` });
+            console.log(`Created emoji for ${member.displayName}: <:${emoji.name}:${emoji.id}>`);
+            resultLines.push(`${member.displayName}: <:${emoji.name}:${emoji.id}>`);
+          } catch (err) {
+            console.error(`Error creating emoji for ${member.displayName}:`, err);
+            resultLines.push(`Failed to create emoji for ${member.displayName}`);
+          }
+        }
+
+        fs.writeFileSync('./playerData.json', JSON.stringify(playerData, null, 2));
+        console.log('Updated playerData.json');
+
+        const rawData = fs.readFileSync('./tribes.json');
+        const tribesCfg = JSON.parse(rawData);
+        tribesCfg.tribe4 = tribeRoleId;
+        tribesCfg.tribe4emoji = tribeEmoji;
+        fs.writeFileSync('./tribes.json', JSON.stringify(tribesCfg, null, 2));
+        console.log('Updated tribes.json');
+
+        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+        await DiscordRequest(endpoint, {
+          method: 'PATCH',
+          body: {
+            content: `Tribe4 role set to ${tribeRoleId} with emoji ${tribeEmoji}\n\nCreated emojis:\n${resultLines.join('\n')}`,
+            flags: InteractionResponseFlags.EPHEMERAL
+          },
+        });
+
+        return;
+      } catch (error) {
+        console.error('Error setting tribe4:', error);
+        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+        await DiscordRequest(endpoint, {
+          method: 'PATCH',
+          body: {
+            content: 'Error setting tribe4 role',
+            flags: InteractionResponseFlags.EPHEMERAL
+          },
+        });
+      }
     }
 
     // ...existing code...
