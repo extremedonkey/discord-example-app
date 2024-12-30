@@ -1581,9 +1581,52 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
           },
         });
       }
-    } // <-- Ensure this closing brace is present
+    } else if (name === 'jeffiscool') {
+      try {
+        await res.send({
+          type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE
+        });
 
-    // ...existing code...
+        const asciiArt = `
+\`\`\`
+  ____ _______ _______
+ / ___|__  /  _ \\__  /
+ \\___ \\ / /| | | | / /
+  ___) / /_| |_| |/ /_
+ |____/____|\\___//____|
+
+  ______      _  _
+ | ___ \\    (_)| |
+ | |_/ / ___  | || |__
+ |  __/ / _ \\ | || '_ \\
+ | |   |  __/ | || |_) |
+ \\_|    \\___| |_||_.__/
+\`\`\`
+`;
+        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+        await DiscordRequest(endpoint, {
+          method: 'PATCH',
+          body: {
+            content: asciiArt,
+            flags: InteractionResponseFlags.EPHEMERAL
+          },
+        });
+        return;
+      } catch (error) {
+        console.error('Error handling jeffiscool command:', error);
+        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+        await DiscordRequest(endpoint, {
+          method: 'PATCH',
+          body: {
+            content: 'Error handling jeffiscool command',
+            flags: InteractionResponseFlags.EPHEMERAL
+          },
+        });
+      }
+    } else {
+      console.error('unknown interaction type', type);
+      return res.status(400).json({ error: 'unknown interaction type' });
+    }
   }
 
   /**
@@ -1681,3 +1724,11 @@ app.listen(PORT, () => {
 
 // Log in to Discord with your client's token
 client.login(process.env.DISCORD_TOKEN);
+
+// Define or import missing helpers:
+// function capitalize(str) { ... } 
+// async function getPlayer(id) { ... }
+// async function saveAllPlayerData(members, guild, roleConfig) { ... }
+// async function updatePlayer(id, newData) { ... }
+// async function loadPlayerData() { ... }
+// async function DiscordRequest(endpoint, options) { ... }
